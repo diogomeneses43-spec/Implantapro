@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ImplantaPro - Gestão de Implantações de Software</title>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .sidebar {
+      transition: all 0.3s ease;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #475569;
+      border-radius: 20px;
+    }
+    .gantt-chart {
+      overflow-x: auto;
+    }
+    .gantt-bar {
+      height: 24px;
+      border-radius: 4px;
+    }
+    .gantt-bar-planned {
+      background-color: rgba(96, 165, 250, 0.3);
+      border: 1px solid #60a5fa;
+    }
+    .gantt-bar-actual {
+      background-color: rgba(34, 197, 94, 0.3);
+      border: 1px solid #22c55e;
+    }
+    .tr-aderencia-verde {
+      background-color: rgba(34, 197, 94, 0.15);
+      border-left: 4px solid #22c55e;
+    }
+    .tr-aderencia-azul {
+      background-color: rgba(59, 130, 246, 0.15);
+      border-left: 4px solid #3b82f6;
+    }
+    .tr-aderencia-roxo {
+      background-color: rgba(168, 85, 247, 0.15);
+      border-left: 4px solid #a855f7;
+    }
+    .tr-aderencia-vermelho {
+      background-color: rgba(239, 68, 68, 0.15);
+      border-left: 4px solid #ef4444;
+    }
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(15, 23, 42, 0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      transition: opacity 0.3s ease-out;
+    }
+    .pulse {
+      animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.5;
+      }
+    }
+    [data-theme="light"] .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    [data-theme="light"] .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+    }
+    [data-theme="light"] .loading-overlay {
+      background-color: rgba(255, 255, 255, 0.7);
+    }
+    .tooltip-custom {
+      position: relative;
+      display: inline-block;
+    }
+    .tooltip-custom .tooltip-text {
+      visibility: hidden;
+      width: 120px;
+      background-color: #334155;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 5px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -60px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .tooltip-custom:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    .fade-in {
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-200">
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="text-center">
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 rounded-lg mb-4 pulse">
+        <i class="fas fa-rocket text-3xl"></i>
+      </div>
+      <h2 class="text-xl font-bold text-white mb-2">Carregando ImplantaPro</h2>
+      <p class="text-slate-300">Preparando seu ambiente de trabalho...</p>
+      <div class="mt-4">
+        <div class="w-48 h-2 bg-slate-700 rounded-full mx-auto overflow-hidden">
+          <div id="progress-bar" class="h-full bg-blue-500 rounded-full" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="drawer lg:drawer-open">
+    <input id="drawer-toggle" type="checkbox" class="drawer-toggle" />
+    
+    <!-- Sidebar -->
+    <div class="drawer-side z-20">
+      <label for="drawer-toggle" class="drawer-overlay"></label>
+      <aside class="sidebar bg-slate-800 w-72 h-screen shadow-lg flex flex-col">
+        <!-- Logo -->
+        <div class="px-6 py-6 flex items-center border-b border-slate-700">
+          <div class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-2 rounded-lg mr-3">
+            <i class="fas fa-rocket text-xl"></i>
+          </div>
+          <span class="font-bold text-xl text-white">ImplantaPro</span>
+        </div>
+        
+        <!-- User Info -->
+        <div class="px-6 py-4 border-b border-slate-700">
+          <div class="flex items-center">
+            <div class="avatar online">
+              <div class="w-10 h-10 rounded-full bg-blue-900 flex items-center justify-center">
+                <span class="text-blue-300 font-semibold">JD</span>
+              </div>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-white">João Dias</p>
+              <p class="text-xs text-slate-400">Gestor de Implantação</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Menu -->
+        <nav class="flex-1 px-4 py-4 overflow-y-auto custom-scrollbar">
+          <ul class="space-y-1">
+            <li>
+              <a href="#dashboard" class="menu-link flex items-center px-4 py-3 text-white bg-blue-900 bg-opacity-50 rounded-lg">
+                <i class="fas fa-chart-pie w-5 h-5 text-blue-400"></i>
+                <span class="ml-3 font-medium">Dashboard</span>
+              </a>
+            </li>
+            <li>
+              <a href="#projetos" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                <i class="fas fa-briefcase w-5 h-5 text-slate-400"></i>
+                <span class="ml-3">Projetos</span>
+              </a>
+            </li>
+            <li>
+              <a href="#tarefas" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                <i class="fas fa-list-check w-5 h-5 text-slate-400"></i>
+                <span class="ml-3">Tarefas</span>
+              </a>
+            </li>
+            <li>
+              <a href="#termo" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                <i class="fas fa-file-lines w-5 h-5 text-slate-400"></i>
+                <span class="ml-3">Termo de Referência</span>
+              </a>
+            </li>
+            <li>
+              <a href="#chamados" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                <i class="fas fa-headset w-5 h-5 text-slate-400"></i>
+                <span class="ml-3">Chamados</span>
+                <span class="ml-auto bg-red-900 text-red-300 text-xs font-semibold px-2 py-0.5 rounded-full">3</span>
+              </a>
+            </li>
+            <li>
+              <a href="#treinamentos" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                <i class="fas fa-graduation-cap w-5 h-5 text-slate-400"></i>
+                <span class="ml-3">Treinamentos</span>
+              </a>
+            </li>
+            <li>
+              <a href="#relatorios" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                <i class="fas fa-file-pdf w-5 h-5 text-slate-400"></i>
+                <span class="ml-3">Relatórios</span>
+              </a>
+            </li>
+          </ul>
+          
+          <div class="pt-6">
+            <p class="px-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              Administração
+            </p>
+            <ul class="mt-2 space-y-1">
+              <li>
+                <a href="#organizacoes" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                  <i class="fas fa-building w-5 h-5 text-slate-400"></i>
+                  <span class="ml-3">Organizações</span>
+                </a>
+              </li>
+              <li>
+                <a href="#usuarios" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                  <i class="fas fa-users w-5 h-5 text-slate-400"></i>
+                  <span class="ml-3">Usuários</span>
+                </a>
+              </li>
+              <li>
+                <a href="#configuracoes" class="menu-link flex items-center px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">
+                  <i class="fas fa-cog w-5 h-5 text-slate-400"></i>
+                  <span class="ml-3">Configurações</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </nav>
+        
+        <!-- Bottom -->
+        <div class="px-6 py-4 border-t border-slate-700">
+          <button id="theme-toggle" class="btn btn-sm btn-ghost text-slate-300 mr-3">
+            <i class="fas fa-sun"></i>
+          </button>
+          <a href="#" class="flex items-center text-slate-300 hover:text-white">
+            <i class="fas fa-sign-out-alt w-5 h-5"></i>
+            <span class="ml-3">Sair</span>
+          </a>
+        </div>
+      </aside>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="drawer-content flex flex-col">
+      <!-- Top Navbar -->
+      <header class="bg-slate-800 shadow-md z-10">
+        <div class="flex items-center justify-between px-4 py-3">
+          <div class="flex items-center">
+            <label for="drawer-toggle" class="btn btn-square btn-ghost lg:hidden text-white">
+              <i class="fas fa-bars"></i>
+            </label>
+            <div class="ml-4">
+              <h1 class="text-xl font-semibold text-white" id="page-title">Dashboard Executivo</h1>
+              <p class="text-sm text-slate-400" id="page-subtitle">Visão geral dos projetos de implantação</p>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-4">
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" class="btn btn-ghost btn-circle">
+                <div class="indicator">
+                  <i class="fas fa-bell text-slate-300"></i>
+                  <span class="indicator-item badge badge-sm badge-error">5</span>
+                </div>
+              </div>
+              <div tabindex="0" class="dropdown-content z-[1] card card-compact w-80 p-2 shadow bg-slate-700 text-slate-200">
+                <div class="card-body">
+                  <h3 class="font-bold text-lg">Notificações</h3>
+                  <div class="space-y-2 mt-2">
+                    <div class="flex p-3 bg-blue-900 bg-opacity-50 rounded-lg">
+                      <i class="fas fa-info-circle text-blue-400 mt-1"></i>
+                      <div class="ml-3">
+                        <p class="text-sm font-medium">Nova tarefa atribuída</p>
+                        <p class="text-xs text-slate-400">Há 10 minutos</p>
+                      </div>
+                    </div>
+                    <div class="flex p-3 bg-red-900 bg-opacity-50 rounded-lg">
+                      <i class="fas fa-exclamation-triangle text-red-400 mt-1"></i>
+                      <div class="ml-3">
+                        <p class="text-sm font-medium">SLA em risco - Chamado #2458</p>
+                        <p class="text-xs text-slate-400">Há 1 hora</p>
+                      </div>
+                    </div>
+                    <div class="flex p-3 bg-green-900 bg-opacity-50 rounded-lg">
+                      <i class="fas fa-check-circle text-green-400 mt-1"></i>
+                      <div class="ml-3">
+                        <p class="text-sm font-medium">Fase "Configuração" concluída</p>
+                        <p class="text-xs text-slate-400">Há 3 horas</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="card-actions mt-3">
+                    <button class="btn btn-sm btn-block btn-ghost">Ver todas</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" class="btn btn-ghost btn-circle">
+                <i class="fas fa-globe text-slate-300"></i>
+              </div>
+              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                <li><a class="active">Português (BR)</a></li>
+                <li><a>English</a></li>
+                <li><a>Español</a></li>
+              </ul>
+            </div>
+            
+            <div class="dropdown dropdown-end">
+              <div tabindex="0" class="btn btn-ghost btn-circle avatar">
+                <div class="w-10 h-10 rounded-full bg-blue-900 flex items-center justify-center">
+                  <span class="text-blue-300 font-semibold">JD</span>
+                </div>
+              </div>
+              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                <li><a>Perfil</a></li>
+                <li><a>Configurações</a></li>
+                <li><a>Sair</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Breadcrumbs -->
+        <div class="text-sm breadcrumbs px-4 py-2 border-t border-slate-700">
+          <ul>
+            <li><a href="#" class="text-slate-400 hover:text-white">Início</a></li>
+            <li id="breadcrumb-current">Dashboard</li>
+          </ul>
+        </div>
+      </header>
+      
+      <!-- Page Content -->
+      <main class="flex-1 p-6 overflow-y-auto custom-scrollbar">
+        <!-- Content Pages -->
+        <div id="page-content">
+          <!-- Dashboard Page -->
+          <div id="dashboard-page" class="page-content fade-in">
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+              <div class="flex flex-wrap items-center gap-3">
+                <div class="form-control">
+                  <div class="input-group">
+                    <input type="text" placeholder="Buscar projeto..." class="input input-bordered bg-slate-700 text-white border-slate-600 w-64" />
+                    <button class="btn bg-slate-600 text-white border-slate-600 hover:bg-slate-500">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <select class="select select-bordered bg-slate-700 text-white border-slate-600 w-full max-w-xs">
+                  <option disabled selected>Organização</option>
+                  <option>Todos</option>
+                  <option>Prefeitura Municipal</option>
+                  <option>Hospital Regional</option>
+                  <option>Secretaria Estadual</option>
+                </select>
+                
+                <select class="select select-bordered bg-slate-700 text-white border-slate-600 w-full max-w-xs">
+                  <option disabled selected>Status</option>
+                  <option>Todos</option>
+                  <option>Em curso</option>
+                  <option>Planejado</option>
+                  <option>Pausado</option>
+                  <option>Concluído</option>
+                </select>
+              </div>
+              
+              <div>
+                <button class="btn btn-primary">
+                  <i class="fas fa-plus mr-2"></i>
+                  Novo Projeto
+                </button>
+              </div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-slate-400 font-medium">Projetos Ativos</p>
+                      <h3 class="text-3xl font-bold text-white mt-1">12</h3>
+<div>
+        <button class="btn btn-primary" id="btn-novo-projeto" onclick="criarProjeto()">
+          <i class="fas fa-plus mr-2"></i>
+          Novo Projeto
+        </button>
+      </div>
+                    <span class="text-green-400 flex items-center">
+                      <i class="fas fa-arrow-up mr-1"></i>
+                      8%
+                    </span>
+                    <span class="text-slate-400 ml-2">vs. mês anterior</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-slate-400 font-medium">Conclusão Média</p>
+                      <h3 class="text-3xl font-bold text-white mt-1">67%</h3>
+                    </div>
+                    <div class="bg-green-900 bg-opacity-50 p-3 rounded-full">
+                      <i class="fas fa-chart-line text-green-400"></i>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center text-sm">
+                    <span class="text-green-400 flex items-center">
+                      <i class="fas fa-arrow-up mr-1"></i>
+                      12%
+                    </span>
+                    <span class="text-slate-400 ml-2">vs. mês anterior</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-slate-400 font-medium">Atendimento TR</p>
+                      <h3 class="text-3xl font-bold text-white mt-1">82%</h3>
+                    </div>
+                    <div class="bg-indigo-900 bg-opacity-50 p-3 rounded-full">
+                      <i class="fas fa-file-lines text-indigo-400"></i>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center text-sm">
+                    <span class="text-green-400 flex items-center">
+                      <i class="fas fa-arrow-up mr-1"></i>
+                      5%
+                    </span>
+                    <span class="text-slate-400 ml-2">vs. mês anterior</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <p class="text-sm text-slate-400 font-medium">Chamados Críticos</p>
+                      <h3 class="text-3xl font-bold text-red-400 mt-1">3</h3>
+                    </div>
+                    <div class="bg-red-900 bg-opacity-50 p-3 rounded-full">
+                      <i class="fas fa-headset text-red-400"></i>
+                    </div>
+                  </div>
+                  <div class="mt-4 flex items-center text-sm">
+                    <span class="text-red-400 flex items-center">
+                      <i class="fas fa-arrow-up mr-1"></i>
+                      2
+                    </span>
+                    <span class="text-slate-400 ml-2">vs. semana anterior</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <!-- Aderência TR (Pizza) -->
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="card-title text-white text-lg">Aderência ao TR</h3>
+                    <div class="dropdown dropdown-end">
+                      <button tabindex="0" class="btn btn-ghost btn-sm btn-square text-slate-300">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                      </button>
+                      <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                        <li><a>Exportar CSV</a></li>
+                        <li><a>Exportar PDF</a></li>
+                        <li><a>Ver detalhes</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center justify-center">
+                    <!-- Simulated Pie Chart -->
+                    <div class="relative w-48 h-48">
+                      <div class="absolute inset-0 flex items-center justify-center">
+                        <div class="w-full h-full" style="background: conic-gradient(#22c55e 0% 55%, #3b82f6 55% 70%, #a855f7 70% 82%, #ef4444 82% 100%); border-radius: 50%;"></div>
+                        <div class="absolute inset-4 bg-slate-800 rounded-full flex items-center justify-center">
+                          <span class="text-2xl font-bold text-white">82%</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="ml-6">
+                      <div class="flex items-center mb-2">
+                        <div class="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
+                        <span class="text-sm text-slate-300">Verde: 55%</span>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <div class="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
+                        <span class="text-sm text-slate-300">Azul: 15%</span>
+                      </div>
+                      <div class="flex items-center mb-2">
+                        <div class="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
+                        <span class="text-sm text-slate-300">Roxo: 12%</span>
+                      </div>
+                      <div class="flex items-center">
+                        <div class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                        <span class="text-sm text-slate-300">Vermelho: 18%</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Progresso por Fase (Barras) -->
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="card-title text-white text-lg">Progresso por Fase</h3>
+                    <div class="dropdown dropdown-end">
+                      <button tabindex="0" class="btn btn-ghost btn-sm btn-square text-slate-300">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                      </button>
+                      <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                        <li><a>Exportar CSV</a></li>
+                        <li><a>Exportar PDF</a></li>
+                        <li><a>Ver detalhes</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <!-- Simulated Bar Chart -->
+                  <div class="space-y-4">
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Descoberta</span>
+                        <span class="font-medium text-white">100%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-green-500 h-2.5 rounded-full" style="width: 100%"></div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Configuração</span>
+                        <span class="font-medium text-white">85%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-green-500 h-2.5 rounded-full" style="width: 85%"></div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Migração</span>
+                        <span class="font-medium text-white">70%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-blue-500 h-2.5 rounded-full" style="width: 70%"></div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Integrações</span>
+                        <span class="font-medium text-white">45%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-blue-500 h-2.5 rounded-full" style="width: 45%"></div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Treinamentos</span>
+                        <span class="font-medium text-white">30%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 30%"></div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Homologação</span>
+                        <span class="font-medium text-white">10%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-yellow-500 h-2.5 rounded-full" style="width: 10%"></div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <div class="flex justify-between text-sm mb-1">
+                        <span class="text-slate-300">Go-live</span>
+                        <span class="font-medium text-white">0%</span>
+                      </div>
+                      <div class="w-full bg-slate-700 rounded-full h-2.5">
+                        <div class="bg-slate-500 h-2.5 rounded-full" style="width: 0%"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Avanço vs Plano (Linha) -->
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="card-title text-white text-lg">Avanço vs Plano</h3>
+                    <div class="dropdown dropdown-end">
+                      <button tabindex="0" class="btn btn-ghost btn-sm btn-square text-slate-300">
+                        <i class="fas fa-ellipsis-vertical"></i>
+                      </button>
+                      <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                        <li><a>Exportar CSV</a></li>
+                        <li><a>Exportar PDF</a></li>
+                        <li><a>Ver detalhes</a></li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <!-- Simulated Line Chart -->
+                  <div class="h-64 relative">
+                    <!-- Grid lines -->
+                    <div class="absolute inset-0 grid grid-cols-6 grid-rows-5">
+                      <div class="col-span-6 border-b border-slate-700"></div>
+                      <div class="col-span-6 border-b border-slate-700"></div>
+                      <div class="col-span-6 border-b border-slate-700"></div>
+                      <div class="col-span-6 border-b border-slate-700"></div>
+                      <div class="col-span-6 border-b border-slate-700"></div>
+                    </div>
+                    
+                    <!-- Y-axis labels -->
+                    <div class="absolute left-0 inset-y-0 flex flex-col justify-between text-xs text-slate-400 py-2">
+                      <span>100%</span>
+                      <span>80%</span>
+                      <span>60%</span>
+                      <span>40%</span>
+                      <span>20%</span>
+                      <span>0%</span>
+                    </div>
+                    
+                    <!-- X-axis labels -->
+                    <div class="absolute bottom-0 inset-x-0 flex justify-between text-xs text-slate-400 px-6">
+                      <span>Jan</span>
+                      <span>Fev</span>
+                      <span>Mar</span>
+                      <span>Abr</span>
+                      <span>Mai</span>
+                      <span>Jun</span>
+                    </div>
+                    
+                    <!-- Planned line (dashed) -->
+                    <svg class="absolute inset-0 mt-2" style="padding-left: 24px; padding-right: 12px; padding-bottom: 20px;">
+                      <path d="M 0,192 L 60,160 L 120,128 L 180,96 L 240,64 L 300,32" 
+                            fill="none" 
+                            stroke="#3b82f6" 
+                            stroke-width="2"
+                            stroke-dasharray="4 2" />
+                      <circle cx="0" cy="192" r="3" fill="#3b82f6" />
+                      <circle cx="60" cy="160" r="3" fill="#3b82f6" />
+                      <circle cx="120" cy="128" r="3" fill="#3b82f6" />
+                      <circle cx="180" cy="96" r="3" fill="#3b82f6" />
+                      <circle cx="240" cy="64" r="3" fill="#3b82f6" />
+                      <circle cx="300" cy="32" r="3" fill="#3b82f6" />
+                    </svg>
+                    
+                    <!-- Actual line (solid) -->
+                    <svg class="absolute inset-0 mt-2" style="padding-left: 24px; padding-right: 12px; padding-bottom: 20px;">
+                      <path d="M 0,192 L 60,168 L 120,144 L 180,112 L 240,96 L 300,88" 
+                            fill="none" 
+                            stroke="#22c55e" 
+                            stroke-width="2" />
+                      <circle cx="0" cy="192" r="3" fill="#22c55e" />
+                      <circle cx="60" cy="168" r="3" fill="#22c55e" />
+                      <circle cx="120" cy="144" r="3" fill="#22c55e" />
+                      <circle cx="180" cy="112" r="3" fill="#22c55e" />
+                      <circle cx="240" cy="96" r="3" fill="#22c55e" />
+                      <circle cx="300" cy="88" r="3" fill="#22c55e" />
+                    </svg>
+                    
+                    <!-- Legend -->
+                    <div class="absolute top-0 right-0 flex items-center space-x-4 text-xs">
+                      <div class="flex items-center">
+                        <div class="w-3 h-0.5 bg-blue-500 mr-1"></div>
+                        <span class="text-slate-300">Planejado</span>
+                      </div>
+                      <div class="flex items-center">
+                        <div class="w-3 h-0.5 bg-green-500 mr-1"></div>
+                        <span class="text-slate-300">Real</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Projects Table -->
+            <div class="card bg-slate-800 shadow-lg mb-8">
+              <div class="card-body p-0">
+                <div class="p-5 border-b border-slate-700">
+                  <div class="flex justify-between items-center">
+                    <h3 class="card-title text-white text-lg">Projetos Ativos</h3>
+                    <button class="btn btn-ghost btn-sm text-slate-300 hover:text-white">
+                      Ver todos
+                      <i class="fas fa-arrow-right ml-2"></i>
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                  <table class="table">
+                    <thead class="bg-slate-700 text-slate-200">
+                      <tr>
+                        <th>Projeto</th>
+                        <th>Organização</th>
+                        <th>Go-live</th>
+                        <th>Progresso</th>
+                        <th>Saúde</th>
+                        <th>Aderência TR</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <div class="font-medium text-white">Implantação Sistema Tributário</div>
+                          <div class="text-xs text-slate-400">Início: 10/01/2023</div>
+                        </td>
+                        <td class="text-slate-300">Prefeitura Municipal</td>
+                        <td>
+                          <div class="font-medium text-white">15/07/2023</div>
+                          <div class="text-xs text-green-400">No prazo</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">67%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 67%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-green-900 text-green-300 border-0">Verde</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">85%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-green-500 rounded-full" style="width: 85%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <div class="font-medium text-white">Sistema de Gestão Hospitalar</div>
+                          <div class="text-xs text-slate-400">Início: 05/03/2023</div>
+                        </td>
+                        <td class="text-slate-300">Hospital Regional</td>
+                        <td>
+                          <div class="font-medium text-white">20/08/2023</div>
+                          <div class="text-xs text-yellow-400">Risco de atraso</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">42%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 42%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-yellow-900 text-yellow-300 border-0">Amarelo</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">76%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-green-500 rounded-full" style="width: 76%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <div class="font-medium text-white">Sistema de Compras e Licitações</div>
+                          <div class="text-xs text-slate-400">Início: 15/02/2023</div>
+                        </td>
+                        <td class="text-slate-300">Secretaria Estadual</td>
+                        <td>
+                          <div class="font-medium text-white">10/06/2023</div>
+                          <div class="text-xs text-red-400">Atrasado (15 dias)</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">78%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 78%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-red-900 text-red-300 border-0">Vermelho</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">64%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-yellow-500 rounded-full" style="width: 64%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Two Column Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              <!-- Upcoming Milestones -->
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="card-title text-white text-lg">Próximos Marcos</h3>
+                    <button class="btn btn-ghost btn-sm text-slate-300 hover:text-white">Ver todos</button>
+                  </div>
+                  
+                  <div class="space-y-4">
+                    <div class="flex items-start p-3 bg-blue-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-blue-900 text-blue-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-flag"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Homologação de Migração</h4>
+                          <span class="text-sm text-blue-400">2 dias</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema Tributário - Prefeitura Municipal</p>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start p-3 bg-green-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-green-900 text-green-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-flag"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Início dos Treinamentos</h4>
+                          <span class="text-sm text-green-400">4 dias</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema de Gestão Hospitalar - Hospital Regional</p>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start p-3 bg-yellow-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-yellow-900 text-yellow-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-flag"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Entrega de Integrações</h4>
+                          <span class="text-sm text-yellow-400">5 dias</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema de Compras - Secretaria Estadual</p>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start p-3 bg-purple-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-purple-900 text-purple-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-flag"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Validação Final de Requisitos</h4>
+                          <span class="text-sm text-purple-400">7 dias</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema Tributário - Prefeitura Municipal</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Critical Support Tickets -->
+              <div class="card bg-slate-800 shadow-lg hover:shadow-xl transition-all duration-300">
+                <div class="card-body p-5">
+                  <div class="flex justify-between items-center mb-4">
+                    <h3 class="card-title text-white text-lg">Chamados Críticos</h3>
+                    <button class="btn btn-ghost btn-sm text-slate-300 hover:text-white">Ver todos</button>
+                  </div>
+                  
+                  <div class="space-y-4">
+                    <div class="flex items-start p-3 bg-red-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-red-900 text-red-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-exclamation-circle"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Erro na migração de dados fiscais</h4>
+                          <span class="text-sm text-red-400">SLA: 2h restantes</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema Tributário - Prefeitura Municipal</p>
+                        <div class="flex items-center mt-2">
+                          <span class="badge badge-sm bg-red-900 text-red-300 border-0">Crítico</span>
+                          <span class="badge badge-sm bg-slate-700 text-slate-300 border-0 ml-2">Migração</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start p-3 bg-red-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-red-900 text-red-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-exclamation-circle"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Integração com sistema legado falha</h4>
+                          <span class="text-sm text-red-400">SLA: 4h restantes</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema de Gestão Hospitalar - Hospital Regional</p>
+                        <div class="flex items-center mt-2">
+                          <span class="badge badge-sm bg-red-900 text-red-300 border-0">Crítico</span>
+                          <span class="badge badge-sm bg-slate-700 text-slate-300 border-0 ml-2">Integração</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="flex items-start p-3 bg-red-900 bg-opacity-20 rounded-lg hover:bg-opacity-30 transition-all cursor-pointer">
+                      <div class="bg-red-900 text-red-400 p-2 rounded-full mr-3">
+                        <i class="fas fa-exclamation-circle"></i>
+                      </div>
+                      <div class="flex-1">
+                        <div class="flex justify-between">
+                          <h4 class="font-medium text-white">Lentidão no processamento de licitações</h4>
+                          <span class="text-sm text-red-400">SLA: 8h restantes</span>
+                        </div>
+                        <p class="text-sm text-slate-400 mt-1">Sistema de Compras - Secretaria Estadual</p>
+                        <div class="flex items-center mt-2">
+                          <span class="badge badge-sm bg-red-900 text-red-300 border-0">Crítico</span>
+                          <span class="badge badge-sm bg-slate-700 text-slate-300 border-0 ml-2">Performance</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Análise Cronomática do TR -->
+            <div class="card bg-slate-800 shadow-lg mb-8">
+              <div class="card-body p-5">
+                <div class="flex justify-between items-center mb-6">
+                  <h3 class="card-title text-white text-lg">Análise Cronomática do TR</h3>
+                  <div class="flex space-x-2">
+                    <select class="select select-bordered select-sm bg-slate-700 text-white border-slate-600">
+                      <option value="">Todos os Projetos</option>
+                      <option value="1">Sistema Tributário</option>
+                      <option value="2">Sistema de Gestão Hospitalar</option>
+                      <option value="3">Sistema de Compras</option>
+                    </select>
+                    <button class="btn btn-primary btn-sm">
+                      <i class="fas fa-download mr-2"></i>
+                      Exportar
+                    </button>
+                  </div>
+                </div>
+                
+                <!-- TR Items -->
+                <div class="overflow-x-auto">
+                  <table class="table">
+                    <thead class="bg-slate-700 text-slate-200">
+                      <tr>
+                        <th>Código</th>
+                        <th>Requisito</th>
+                        <th>Aderência</th>
+                        <th>Fase</th>
+                        <th>Previsto</th>
+                        <th>Real</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="tr-aderencia-verde hover:bg-slate-700">
+                        <td class="text-white">TR-001</td>
+                        <td class="max-w-md">
+                          <div class="font-medium text-white">Cadastro de contribuintes com validação de CPF/CNPJ</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-green-900 text-green-300 border-0">Verde</div>
+                        </td>
+                        <td class="text-slate-300">Configuração</td>
+                        <td>
+                          <div class="text-sm text-white">15/03/2023</div>
+                          <div class="text-xs text-slate-400">a 20/03/2023</div>
+                        </td>
+                        <td>
+                          <div class="text-sm text-white">16/03/2023</div>
+                          <div class="text-xs text-slate-400">a 19/03/2023</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-green-900 text-green-300 border-0">No prazo</div>
+                        </td>
+                        <td>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                              <li><a>Ver detalhes</a></li>
+                              <li><a>Editar</a></li>
+                              <li><a>Ver evidências</a></li>
+                            </ul>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="tr-aderencia-azul hover:bg-slate-700">
+                        <td class="text-white">TR-002</td>
+                        <td class="max-w-md">
+                          <div class="font-medium text-white">Emissão de certidões negativas de débitos</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-blue-900 text-blue-300 border-0">Azul</div>
+                        </td>
+                        <td class="text-slate-300">Configuração</td>
+                        <td>
+                          <div class="text-sm text-white">22/03/2023</div>
+                          <div class="text-xs text-slate-400">a 28/03/2023</div>
+                        </td>
+                        <td>
+                          <div class="text-sm text-white">-</div>
+                          <div class="text-xs text-slate-400">Não iniciado</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-slate-700 text-slate-300 border-0">Pendente</div>
+                        </td>
+                        <td>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                              <li><a>Ver detalhes</a></li>
+                              <li><a>Editar</a></li>
+                              <li><a>Agendar</a></li>
+                            </ul>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="tr-aderencia-roxo hover:bg-slate-700">
+                        <td class="text-white">TR-003</td>
+                        <td class="max-w-md">
+                          <div class="font-medium text-white">Integração com sistema de nota fiscal eletrônica</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-purple-900 text-purple-300 border-0">Roxo</div>
+                        </td>
+                        <td class="text-slate-300">Integrações</td>
+                        <td>
+                          <div class="text-sm text-white">05/04/2023</div>
+                          <div class="text-xs text-slate-400">a 20/04/2023</div>
+                        </td>
+                        <td>
+                          <div class="text-sm text-white">-</div>
+                          <div class="text-xs text-slate-400">Não será usado agora</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-purple-900 text-purple-300 border-0">Adiado</div>
+                        </td>
+                        <td>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                              <li><a>Ver detalhes</a></li>
+                              <li><a>Editar</a></li>
+                              <li><a>Justificativa</a></li>
+                            </ul>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="tr-aderencia-vermelho hover:bg-slate-700">
+                        <td class="text-white">TR-004</td>
+                        <td class="max-w-md">
+                          <div class="font-medium text-white">Integração com blockchain para registro imutável de transações</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-red-900 text-red-300 border-0">Vermelho</div>
+                        </td>
+                        <td class="text-slate-300">Integrações</td>
+                        <td>
+                          <div class="text-sm text-white">10/05/2023</div>
+                          <div class="text-xs text-slate-400">a 30/05/2023</div>
+                        </td>
+                        <td>
+                          <div class="text-sm text-white">-</div>
+                          <div class="text-xs text-slate-400">Não atende</div>
+                        </td>
+                        <td>
+                          <div class="badge bg-red-900 text-red-300 border-0">Não atende</div>
+                        </td>
+                        <td>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                              <li><a>Ver detalhes</a></li>
+                              <li><a>Editar</a></li>
+                              <li><a class="text-red-400">Criar chamado</a></li>
+                            </ul>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <!-- Gantt Chart Preview -->
+                <h4 class="font-medium text-white mt-8 mb-4">Linha do Tempo Cronomática</h4>
+                <div class="gantt-chart overflow-x-auto pb-4">
+                  <div class="min-w-[800px]">
+                    <!-- Header -->
+                    <div class="flex border-b border-slate-700 pb-2">
+                      <div class="w-1/4 font-medium text-slate-300">Item TR</div>
+                      <div class="w-3/4 flex">
+                        <div class="w-1/6 text-center text-sm text-slate-400">Jan</div>
+                        <div class="w-1/6 text-center text-sm text-slate-400">Fev</div>
+                        <div class="w-1/6 text-center text-sm text-slate-400">Mar</div>
+                        <div class="w-1/6 text-center text-sm text-slate-400">Abr</div>
+                        <div class="w-1/6 text-center text-sm text-slate-400">Mai</div>
+                        <div class="w-1/6 text-center text-sm text-slate-400">Jun</div>
+                      </div>
+                    </div>
+                    
+                    <!-- Gantt Rows -->
+                    <div class="mt-4 space-y-4">
+                      <!-- TR-001 -->
+                      <div class="flex items-center">
+                        <div class="w-1/4">
+                          <div class="text-sm font-medium text-white">TR-001</div>
+                          <div class="text-xs text-slate-400">Cadastro de contribuintes</div>
+                        </div>
+                        <div class="w-3/4 relative h-8">
+                          <!-- Planned -->
+                          <div class="gantt-bar gantt-bar-planned absolute" style="left: 15%; width: 5%;"></div>
+                          <!-- Actual -->
+                          <div class="gantt-bar gantt-bar-actual absolute" style="left: 15.5%; width: 3%;"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- TR-002 -->
+                      <div class="flex items-center">
+                        <div class="w-1/4">
+                          <div class="text-sm font-medium text-white">TR-002</div>
+                          <div class="text-xs text-slate-400">Emissão de certidões</div>
+                        </div>
+                        <div class="w-3/4 relative h-8">
+                          <!-- Planned -->
+                          <div class="gantt-bar gantt-bar-planned absolute" style="left: 18%; width: 6%;"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- TR-003 -->
+                      <div class="flex items-center">
+                        <div class="w-1/4">
+                          <div class="text-sm font-medium text-white">TR-003</div>
+                          <div class="text-xs text-slate-400">Integração nota fiscal</div>
+                        </div>
+                        <div class="w-3/4 relative h-8">
+                          <!-- Planned -->
+                          <div class="gantt-bar gantt-bar-planned absolute" style="left: 28%; width: 12%;"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- TR-004 -->
+                      <div class="flex items-center">
+                        <div class="w-1/4">
+                          <div class="text-sm font-medium text-white">TR-004</div>
+                          <div class="text-xs text-slate-400">Integração blockchain</div>
+                        </div>
+                        <div class="w-3/4 relative h-8">
+                          <!-- Planned -->
+                          <div class="gantt-bar gantt-bar-planned absolute" style="left: 42%; width: 15%;"></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Legend -->
+                    <div class="flex items-center justify-end mt-4 text-xs text-slate-400">
+                      <div class="flex items-center mr-4">
+                        <div class="w-3 h-3 bg-blue-900 border border-blue-500 mr-1"></div>
+                        <span>Planejado</span>
+                      </div>
+                      <div class="flex items-center">
+                        <div class="w-3 h-3 bg-green-900 border border-green-500 mr-1"></div>
+                        <span>Real</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Projetos Page -->
+          <div id="projetos-page" class="page-content hidden">
+            <div class="flex justify-between items-center mb-6">
+              <div>
+                <h2 class="text-2xl font-bold text-white">Projetos de Implantação</h2>
+                <p class="text-slate-400 mt-1">Gerencie todos os projetos de implantação de software</p>
+              </div>
+              <button class="btn btn-primary">
+                <i class="fas fa-plus mr-2"></i>
+                Novo Projeto
+              </button>
+            </div>
+
+            <div class="mb-6">
+              <div class="flex flex-wrap gap-4 items-center">
+                <div class="form-control flex-1">
+                  <div class="input-group">
+                    <input type="text" placeholder="Buscar projetos..." class="input input-bordered bg-slate-700 text-white border-slate-600 w-full" />
+                    <button class="btn bg-slate-600 text-white border-slate-600 hover:bg-slate-500">
+                      <i class="fas fa-search"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <select class="select select-bordered bg-slate-700 text-white border-slate-600">
+                    <option disabled selected>Status</option>
+                    <option>Todos</option>
+                    <option>Em andamento</option>
+                    <option>Concluído</option>
+                    <option>Pausado</option>
+                  </select>
+                  <select class="select select-bordered bg-slate-700 text-white border-slate-600">
+                    <option disabled selected>Organização</option>
+                    <option>Todas</option>
+                    <option>Prefeitura Municipal</option>
+                    <option>Hospital Regional</option>
+                    <option>Secretaria Estadual</option>
+                  </select>
+                  <button class="btn btn-ghost bg-slate-700 text-white">
+                    <i class="fas fa-filter mr-2"></i>
+                    Filtros
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="card bg-slate-800 shadow-lg mb-8">
+              <div class="card-body p-0">
+                <div class="overflow-x-auto">
+                  <table class="table">
+                    <thead class="bg-slate-700 text-slate-200">
+                      <tr>
+                        <th>
+                          <label>
+                            <input type="checkbox" class="checkbox checkbox-sm" />
+                          </label>
+                        </th>
+                        <th>Projeto</th>
+                        <th>Cliente</th>
+                        <th>Responsável</th>
+                        <th>Status</th>
+                        <th>Progresso</th>
+                        <th>Data Início</th>
+                        <th>Data Fim</th>
+                        <th>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <label>
+                            <input type="checkbox" class="checkbox checkbox-sm" />
+                          </label>
+                        </td>
+                        <td>
+                          <div class="font-medium text-white">Implantação Sistema Tributário</div>
+                          <div class="text-xs text-slate-400">ID: PRJ-2023-001</div>
+                        </td>
+                        <td class="text-slate-300">Prefeitura Municipal</td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <div class="avatar">
+                              <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center">
+                                <span class="text-blue-300 text-xs font-semibold">JD</span>
+                              </div>
+                            </div>
+                            <span>João Dias</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-green-900 text-green-300 border-0">Em andamento</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">67%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 67%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="text-slate-300">10/01/2023</td>
+                        <td class="text-slate-300">15/07/2023</td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <label>
+                            <input type="checkbox" class="checkbox checkbox-sm" />
+                          </label>
+                        </td>
+                        <td>
+                          <div class="font-medium text-white">Sistema de Gestão Hospitalar</div>
+                          <div class="text-xs text-slate-400">ID: PRJ-2023-002</div>
+                        </td>
+                        <td class="text-slate-300">Hospital Regional</td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <div class="avatar">
+                              <div class="w-8 h-8 rounded-full bg-purple-900 flex items-center justify-center">
+                                <span class="text-purple-300 text-xs font-semibold">MS</span>
+                              </div>
+                            </div>
+                            <span>Maria Silva</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-yellow-900 text-yellow-300 border-0">Atenção</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">42%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 42%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="text-slate-300">05/03/2023</td>
+                        <td class="text-slate-300">20/08/2023</td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <label>
+                            <input type="checkbox" class="checkbox checkbox-sm" />
+                          </label>
+                        </td>
+                        <td>
+                          <div class="font-medium text-white">Sistema de Compras e Licitações</div>
+                          <div class="text-xs text-slate-400">ID: PRJ-2023-003</div>
+                        </td>
+                        <td class="text-slate-300">Secretaria Estadual</td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <div class="avatar">
+                              <div class="w-8 h-8 rounded-full bg-green-900 flex items-center justify-center">
+                                <span class="text-green-300 text-xs font-semibold">RS</span>
+                              </div>
+                            </div>
+                            <span>Roberto Santos</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-red-900 text-red-300 border-0">Crítico</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">78%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 78%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="text-slate-300">15/02/2023</td>
+                        <td class="text-slate-300">10/06/2023</td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+
+                      <tr class="hover:bg-slate-700">
+                        <td>
+                          <label>
+                            <input type="checkbox" class="checkbox checkbox-sm" />
+                          </label>
+                        </td>
+                        <td>
+                          <div class="font-medium text-white">Portal de Serviços ao Cidadão</div>
+                          <div class="text-xs text-slate-400">ID: PRJ-2023-004</div>
+                        </td>
+                        <td class="text-slate-300">Prefeitura Municipal</td>
+                        <td>
+                          <div class="flex items-center gap-2">
+                            <div class="avatar">
+                              <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center">
+                                <span class="text-blue-300 text-xs font-semibold">JD</span>
+                              </div>
+                            </div>
+                            <span>João Dias</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div class="badge bg-slate-700 text-slate-300 border-0">Planejado</div>
+                        </td>
+                        <td>
+                          <div class="flex items-center">
+                            <span class="mr-2 text-sm font-medium text-white">0%</span>
+                            <div class="w-24 h-2 bg-slate-700 rounded-full">
+                              <div class="h-2 bg-blue-500 rounded-full" style="width: 0%"></div>
+                            </div>
+                          </div>
+                        </td>
+                        <td class="text-slate-300">01/07/2023</td>
+                        <td class="text-slate-300">30/12/2023</td>
+                        <td>
+                          <div class="flex space-x-2">
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Visualizar</span>
+                              <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-ghost btn-xs text-slate-300 hover:text-white tooltip-custom">
+                              <span class="tooltip-text">Editar</span>
+                              <i class="fas fa-edit"></i>
+                            </button>
+                            <div class="dropdown dropdown-end">
+                              <button tabindex="0" class="btn btn-ghost btn-xs text-slate-300 hover:text-white">
+                                <i class="fas fa-ellipsis-v"></i>
+                              </button>
+                              <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-700 rounded-box w-52">
+                                <li><a>Detalhes</a></li>
+                                <li><a>Cronograma</a></li>
+                                <li><a>Relatórios</a></li>
+                                <li><a class="text-red-400">Arquivar</a></li>
+                              </ul>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <div class="text-sm text-slate-400">
+                Mostrando 4 de 12 projetos
+              </div>
+              <div class="join">
+                <button class="join-item btn btn-sm bg-slate-700 text-white border-slate-600">«</button>
+                <button class="join-item btn btn-sm bg-blue-600 text-white border-blue-700">1</button>
+                <button class="join-item btn btn-sm bg-slate-700 text-white border-slate-600">2</button>
+                <button class="join-item btn btn-sm bg-slate-700 text-white border-slate-600">3</button>
+                <button class="join-item btn btn-sm bg-slate-700 text-white border-slate-600">»</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tarefas Page -->
+          <div id="tarefas-page" class="page-content hidden">
+            <div class="flex justify-between items-center mb-6">
+              <div>
+                <h2 class="text-2xl font-bold text-white">Tarefas</h2>
+                <p class="text-slate-400 mt-1">Gerencie tarefas de implantação em todos os projetos</p>
+              </div>
+              <button class="btn btn-primary" id="btn-nova-tarefa" onclick="criarTarefa()">
+                <i class="fas fa-plus mr-2"></i>
+                Nova Tarefa
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <!-- To Do -->
+              <div class="card bg-slate-800 shadow-lg">
+                <div class="card-body p-4">
+                  <h3 class="text-lg font-semibold text-white flex items-center justify-between">
+                    <span>A Fazer</span>
+                    <span class="badge badge-sm bg-slate-700 text-slate-300">8</span>
+                  </h3>
+                  
+                  <div class="mt-4 space-y-3">
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-blue-900 text-blue-300">Sistema Tributário</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Configurar parâmetros fiscais</h4>
+                        <p class="text-sm text-slate-400 mt-1">Definir regras de cálculo para impostos municipais</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center">
+                                <span class="text-blue-300 text-xs font-semibold">JD</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">João Dias</span>
+                          </div>
+                          <span class="text-xs text-slate-400">12/06/2023</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-purple-900 text-purple-300">Gestão Hospitalar</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Preparar ambiente de homologação</h4>
+                        <p class="text-sm text-slate-400 mt-1">Configurar servidor de testes para validação</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-purple-900 flex items-center justify-center">
+                                <span class="text-purple-300 text-xs font-semibold">MS</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">Maria Silva</span>
+                          </div>
+                          <span class="text-xs text-slate-400">15/06/2023</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Em Andamento -->
+              <div class="card bg-slate-800 shadow-lg">
+                <div class="card-body p-4">
+                  <h3 class="text-lg font-semibold text-white flex items-center justify-between">
+                    <span>Em Andamento</span>
+                    <span class="badge badge-sm bg-slate-700 text-slate-300">5</span>
+                  </h3>
+                  
+                  <div class="mt-4 space-y-3">
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-green-900 text-green-300">Sistema Compras</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Migração de dados legados</h4>
+                        <p class="text-sm text-slate-400 mt-1">Transferir histórico de processos licitatórios</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-green-900 flex items-center justify-center">
+                                <span class="text-green-300 text-xs font-semibold">RS</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">Roberto Santos</span>
+                          </div>
+                          <span class="text-xs text-red-400">Atrasado</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-blue-900 text-blue-300">Sistema Tributário</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Integração com sistema bancário</h4>
+                        <p class="text-sm text-slate-400 mt-1">Implementar API para baixa automática</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center">
+                                <span class="text-blue-300 text-xs font-semibold">JD</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">João Dias</span>
+                          </div>
+                          <span class="text-xs text-green-400">No prazo</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Em Revisão -->
+              <div class="card bg-slate-800 shadow-lg">
+                <div class="card-body p-4">
+                  <h3 class="text-lg font-semibold text-white flex items-center justify-between">
+                    <span>Em Revisão</span>
+                    <span class="badge badge-sm bg-slate-700 text-slate-300">3</span>
+                  </h3>
+                  
+                  <div class="mt-4 space-y-3">
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-purple-900 text-purple-300">Gestão Hospitalar</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Configuração de fluxo de atendimento</h4>
+                        <p class="text-sm text-slate-400 mt-1">Validar regras de negócio com equipe médica</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-purple-900 flex items-center justify-center">
+                                <span class="text-purple-300 text-xs font-semibold">MS</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">Maria Silva</span>
+                          </div>
+                          <span class="text-xs text-yellow-400">Urgente</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Concluído -->
+              <div class="card bg-slate-800 shadow-lg">
+                <div class="card-body p-4">
+                  <h3 class="text-lg font-semibold text-white flex items-center justify-between">
+                    <span>Concluído</span>
+                    <span class="badge badge-sm bg-slate-700 text-slate-300">7</span>
+                  </h3>
+                  
+                  <div class="mt-4 space-y-3">
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-blue-900 text-blue-300">Sistema Tributário</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Instalação do ambiente</h4>
+                        <p class="text-sm text-slate-400 mt-1">Configuração inicial dos servidores</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-blue-900 flex items-center justify-center">
+                                <span class="text-blue-300 text-xs font-semibold">JD</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">João Dias</span>
+                          </div>
+                          <span class="text-xs text-slate-400">15/05/2023</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card bg-slate-700 shadow-sm cursor-pointer hover:shadow-md transition-all">
+                      <div class="card-body p-3">
+                        <div class="flex justify-between">
+                          <span class="badge badge-sm bg-green-900 text-green-300">Sistema Compras</span>
+                          <div class="dropdown dropdown-end">
+                            <button tabindex="0" class="btn btn-ghost btn-xs">
+                              <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-slate-800 rounded-box w-40">
+                              <li><a>Editar</a></li>
+                              <li><a>Atribuir</a></li>
+                              <li><a class="text-red-400">Remover</a></li>
+                            </ul>
+                          </div>
+                        </div>
+                        <h4 class="font-medium text-white mt-2">Levantamento de requisitos</h4>
+                        <p class="text-sm text-slate-400 mt-1">Entrevistas com equipe de compras</p>
+                        <div class="flex justify-between items-center mt-3">
+                          <div class="flex items-center">
+                            <div class="avatar">
+                              <div class="w-6 h-6 rounded-full bg-green-900 flex items-center justify-center">
+                                <span class="text-green-300 text-xs font-semibold">RS</span>
+                              </div>
+                            </div>
+                            <span class="text-xs text-slate-400 ml-2">Roberto Santos</span>
+                          </div>
+                          <span class="text-xs text-slate-400">28/04/2023</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outras páginas podem ser adicionadas aqui -->
+        </div>
+      </main>
+      
+      <!-- Footer -->
+      <footer class="bg-slate-800 p-4 border-t border-slate-700 text-center text-sm text-slate-400">
+        <p>© 2023 ImplantaPro. Todos os direitos reservados.</p>
+      </footer>
+    </div>
+  </div>
+  
+  <script>
+    // Configuração da API
+    const API = {
+      baseUrl: 'https://api.implantapro.com/v1',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      
+      // Método para obter token de autenticação do localStorage
+      getAuthToken() {
+        return localStorage.getItem('auth_token');
+      },
+      
+      // Métodos para chamadas à API
+      async request(endpoint, method = 'GET', data = null) {
+        try {
+          const url = `${this.baseUrl}${endpoint}`;
+          const token = this.getAuthToken();
+          
+          const options = {
+            method,
+            headers: {
+              ...this.headers,
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+          };
+          
+          if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+            options.body = JSON.stringify(data);
+          }
+          
+          const response = await fetch(url, options);
+          
+          // Verificar autenticação
+          if (response.status === 401) {
+            localStorage.removeItem('auth_token');
+            window.location.href = '/login.html';
+            return null;
+          }
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            throw new Error(result.message || 'Erro na requisição');
+          }
+          
+          return result;
+        } catch (error) {
+          console.error('API Error:', error);
+          showNotification(error.message || 'Erro na comunicação com o servidor', 'error');
+          return null;
+        }
+      },
+      
+      // Métodos específicos
+      async login(email, password) {
+        const result = await this.request('/auth/login', 'POST', { email, password });
+        if (result && result.token) {
+          localStorage.setItem('auth_token', result.token);
+          localStorage.setItem('user_data', JSON.stringify(result.user));
+          return true;
+        }
+        return false;
+      },
+      
+      async getProjetos() {
+        return await this.request('/projetos');
+      },
+      
+      async getProjetoById(id) {
+        return await this.request(`/projetos/${id}`);
+      },
+      
+      async createProjeto(data) {
+        return await this.request('/projetos', 'POST', data);
+      },
+      
+      async updateProjeto(id, data) {
+        return await this.request(`/projetos/${id}`, 'PUT', data);
+      },
+      
+      async getTarefas(filtros = {}) {
+        const queryParams = new URLSearchParams(filtros).toString();
+        return await this.request(`/tarefas?${queryParams}`);
+      },
+      
+      async createTarefa(data) {
+        return await this.request('/tarefas', 'POST', data);
+      },
+      
+      async updateTarefa(id, data) {
+        return await this.request(`/tarefas/${id}`, 'PUT', data);
+      },
+      
+      async getRequisitos(projetoId) {
+        return await this.request(`/requisitos?projeto_id=${projetoId}`);
+      }
+    };
+    
+    // Função para mostrar notificações
+    function showNotification(message, type = 'info') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      
+      const icon = document.createElement('i');
+      switch(type) {
+        case 'success':
+          icon.className = 'fas fa-check-circle';
+          break;
+        case 'error':
+          icon.className = 'fas fa-exclamation-circle';
+          break;
+        case 'warning':
+          icon.className = 'fas fa-exclamation-triangle';
+          break;
+        default:
+          icon.className = 'fas fa-info-circle';
+      }
+      
+      const messageSpan = document.createElement('span');
+      messageSpan.textContent = message;
+      
+      const closeBtn = document.createElement('button');
+      closeBtn.innerHTML = '&times;';
+      closeBtn.addEventListener('click', () => {
+        notification.remove();
+      });
+      
+      notification.appendChild(icon);
+      notification.appendChild(messageSpan);
+      notification.appendChild(closeBtn);
+      
+      document.body.appendChild(notification);
+      
+      // Auto-remove após 5 segundos
+      setTimeout(() => {
+        notification.classList.add('fade-out');
+        setTimeout(() => {
+          notification.remove();
+        }, 300);
+      }, 5000);
+    }
+
+    // Simular carregamento inicial
+    document.addEventListener('DOMContentLoaded', function() {
+      const loadingOverlay = document.getElementById('loading-overlay');
+      const progressBar = document.getElementById('progress-bar');
+      
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 5;
+        progressBar.style.width = `${progress}%`;
+        
+        if (progress >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            loadingOverlay.style.opacity = 0;
+            setTimeout(() => {
+              loadingOverlay.style.display = 'none';
+            }, 300);
+          }, 500);
+        }
+      }, 100);
+
+      // Navegação entre páginas
+      const menuLinks = document.querySelectorAll('.menu-link');
+      const pages = document.querySelectorAll('.page-content');
+      const pageTitle = document.getElementById('page-title');
+      const pageSubtitle = document.getElementById('page-subtitle');
+      const breadcrumbCurrent = document.getElementById('breadcrumb-current');
+      
+      menuLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          
+          // Remover classe ativa de todos os links
+          menuLinks.forEach(l => {
+            l.classList.remove('bg-blue-900', 'bg-opacity-50', 'text-white');
+            l.classList.add('text-slate-300', 'hover:bg-slate-700');
+          });
+          
+          // Adicionar classe ativa ao link clicado
+          link.classList.remove('text-slate-300', 'hover:bg-slate-700');
+          link.classList.add('bg-blue-900', 'bg-opacity-50', 'text-white');
+          
+          // Esconder todas as páginas
+          pages.forEach(page => {
+            page.classList.add('hidden');
+            page.classList.remove('fade-in');
+          });
+          
+          // Mostrar a página correspondente
+          const pageId = link.getAttribute('href').substring(1);
+          const targetPage = document.getElementById(`${pageId}-page`);
+          
+          if (targetPage) {
+            targetPage.classList.remove('hidden');
+            setTimeout(() => {
+              targetPage.classList.add('fade-in');
+            }, 10);
+            
+            // Atualizar título e breadcrumb
+            let title, subtitle;
+            
+            switch(pageId) {
+              case 'dashboard':
+                title = 'Dashboard Executivo';
+                subtitle = 'Visão geral dos projetos de implantação';
+                break;
+              case 'projetos':
+                title = 'Projetos';
+                subtitle = 'Gestão de projetos de implantação';
+                break;
+              case 'tarefas':
+                title = 'Tarefas';
+                subtitle = 'Gestão de tarefas de implantação';
+                break;
+              case 'termo':
+                title = 'Termo de Referência';
+                subtitle = 'Gestão de requisitos contratuais';
+                break;
+              case 'chamados':
+                title = 'Chamados';
+                subtitle = 'Suporte e atendimento';
+                break;
+              case 'treinamentos':
+                title = 'Treinamentos';
+                subtitle = 'Capacitação de usuários';
+                break;
+              case 'relatorios':
+                title = 'Relatórios';
+                subtitle = 'Análise e métricas';
+                break;
+              case 'organizacoes':
+                title = 'Organizações';
+                subtitle = 'Gestão de clientes';
+                break;
+              case 'usuarios':
+                title = 'Usuários';
+                subtitle = 'Gestão de usuários do sistema';
+                break;
+              case 'configuracoes':
+                title = 'Configurações';
+                subtitle = 'Preferências do sistema';
+                break;
+              default:
+                title = 'Dashboard';
+                subtitle = 'Visão geral';
+            }
+            
+            pageTitle.textContent = title;
+            pageSubtitle.textContent = subtitle;
+            breadcrumbCurrent.textContent = title;
+          }
+          
+          // Fechar drawer no mobile
+          if (window.innerWidth < 1024) {
+            document.getElementById('drawer-toggle').checked = false;
+          }
+        });
+      });
+      
+      // Theme toggle functionality
+      const themeToggle = document.getElementById('theme-toggle');
+      themeToggle.addEventListener('click', () => {
+        const html = document.documentElement;
+        const currentTheme = html.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        html.setAttribute('data-theme', newTheme);
+        
+        // Atualizar ícone
+        if (newTheme === 'dark') {
+          themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+          document.body.classList.remove('bg-gray-50', 'text-gray-800');
+          document.body.classList.add('bg-slate-900', 'text-slate-200');
+        } else {
+          themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+          document.body.classList.remove('bg-slate-900', 'text-slate-200');
+          document.body.classList.add('bg-gray-50', 'text-gray-800');
+        }
+        
+        // Salvar preferência
+        localStorage.setItem('theme', newTheme);
+      });
+      
+      // Verificar tema salvo
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (savedTheme === 'light') {
+          themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+          document.body.classList.remove('bg-slate-900', 'text-slate-200');
+          document.body.classList.add('bg-gray-50', 'text-gray-800');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
